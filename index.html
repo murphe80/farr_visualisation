@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Temperature and Mortality of London.</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 24px auto; padding: 0 20px; max-width: 1900px; color: #273442; background: #f5eddc; }
+      h1 { margin-bottom: 8px; }
+      p { line-height: 1.5; }
+      #visualisation { padding: 12px 0 22px; overflow-x: auto; }
+      .chart-grid { display: block; width: 100%; min-width: 1600px; height: auto; margin: auto; }
+      .visualisation-title { font-size: 76px; font-weight: 650; fill: #273442; }
+      .visualisation-subtitle { font-size: 42px; fill: #596675; }
+      .panel-title { font-size: 48px; font-weight: 650; fill: #273442; }
+      .average-baselines { font-size: 20px; fill: #596675; }
+      .zoomable-panel { cursor: zoom-in; }
+      .panel-title[role="button"]:hover, .panel-title[role="button"]:focus-visible { fill: #2464b4; text-decoration: underline; }
+      body.zoom-open { overflow: hidden; }
+      #chart-zoom { box-sizing: border-box; width: min(1100px, calc(100vw - 32px)); max-width: none; max-height: 92vh; padding: 20px; border: 1px solid #b5a991; border-radius: 8px; background: #f5eddc; color: #273442; }
+      #chart-zoom::backdrop { background: #17202bb3; }
+      #chart-zoom[open] { display: flex; flex-direction: column; }
+      .zoom-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+      .zoom-header h2 { margin: 0; font-size: 24px; }
+      .zoom-close { flex-shrink: 0; padding: 8px 14px; font: inherit; color: inherit; background: #fffaf0; border: 1px solid #b5a991; border-radius: 4px; cursor: pointer; }
+      .zoom-help { font-size: 13px; color: #596675; }
+      .zoom-viewport { min-height: 0; overflow: auto; }
+      .zoom-chart { display: block; width: 100%; min-width: 700px; height: auto; }
+      #zoom-week-details { flex-shrink: 0; margin: 12px 0 0; padding: 10px; background: #eee3ce; font-size: 13px; }
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+      .spokes line { stroke: #dfd5c3; stroke-width: 0.8; }
+      .month-labels { font-size: 22px; fill: #596675; }
+      .month-bands path { fill: #cbd5de; }
+      .month-bands path:nth-child(even) { fill: #e0e6eb; }
+      .month-bands path.is-active { fill: #455a70; }
+      .radial-axes line, .region-labels line { stroke: #766c5c; stroke-width: 0.8; }
+      .radial-axes text, .region-labels text { fill: #423d35; stroke: none; }
+      .radial-axes text { font-size: 11px; }
+      .region-labels text { font-size: 20px; font-weight: 600; }
+      @media (max-width: 560px) { h1 { font-size: 25px; } }
+      .grid-circle { fill: none; stroke: #b5a991; stroke-width: 0.8; }
+      .reference-circle { fill: none; stroke: #334155; stroke-width: 1.5; stroke-dasharray: 5 4; }
+      .series-outline { fill: none; stroke: #60594e; stroke-width: 2.8; }
+      .series-trend { fill: none; stroke-width: 1.8; }
+      .estimate-halo { fill: none; stroke: #60594e; stroke-width: 1; stroke-dasharray: 2 2; pointer-events: none; }
+      .week-point { stroke: #273442; stroke-width: 1.3; pointer-events: none; }
+      .week-tooltip { position: fixed; z-index: 10; box-sizing: border-box; width: 244px; max-width: calc(100vw - 16px); padding: 12px 14px; border: 1px solid #b5a991; border-radius: 6px; background: #fffaf0; color: #273442; box-shadow: 0 3px 12px #423d3526; font-size: 13px; line-height: 1.4; pointer-events: none; }
+      .week-tooltip[hidden] { display: none; }
+      .tooltip-date { font-weight: 650; margin-bottom: 8px; }
+      .tooltip-value { font-weight: 600; }
+      .tooltip-deviation { color: #596675; font-size: 12px; }
+      .tooltip-deviation + .tooltip-value { margin-top: 7px; }
+      .week-sector { cursor: crosshair; }
+      .week-mark { cursor: crosshair; outline: none; }
+      .week-mark.is-active .week-point { stroke: #111; stroke-width: 2; }
+      .month-labels .is-active { fill: #111; font-weight: 700; }
+      .legends { display: flex; justify-content: center; flex-wrap: wrap; gap: 20px 48px; font-size: 13px; }
+      .legend p { margin: 0 0 8px; font-weight: 600; }
+      .legend-items { display: flex; gap: 18px; }
+      .swatch { display: inline-block; width: 12px; height: 12px; border: 1px solid #60594e; border-radius: 50%; margin-right: 6px; vertical-align: -2px; }
+      .mortality-above { background: #000; }
+      .mortality-below { background: #fff; }
+      .temperature-above { background: #cf302b; }
+      .temperature-below { background: #2464b4; }
+      .interaction-help { color: #596675; font-size: 13px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <h1 class="sr-only">Temperature and Mortality of London.</h1>
+    <p id="subtitle" class="sr-only">Weekly diagrams for 1840–1850 · followed by the 1840–1849 average</p>
+    <div id="visualisation">Loading charts…</div>
+    <div class="legends" aria-label="Chart colour legends">
+      <div class="legend"><p>Outer circle · Weekly deaths</p><div class="legend-items">
+        <span><i class="swatch mortality-above" aria-hidden="true"></i>Above reference</span>
+        <span><i class="swatch mortality-below" aria-hidden="true"></i>Below reference</span>
+      </div></div>
+      <div class="legend"><p>Inner circle · Temperature</p><div class="legend-items">
+        <span><i class="swatch temperature-above" aria-hidden="true"></i>Above reference</span>
+        <span><i class="swatch temperature-below" aria-hidden="true"></i>Below reference</span>
+      </div></div>
+    </div>
+    <p class="interaction-help">Click a diagram to enlarge it. Hover a spoke or point for values. Use Tab to focus a year or point; Enter opens a year. Press Escape to dismiss details or close the enlarged view. Scroll sideways on smaller screens.</p>
+    <p id="week-details" class="sr-only" aria-live="polite"></p>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+    <script src="chart-data.js?v=20261014-7"></script>
+    <script src="visualisation.js?v=20261014-7"></script>
+  </body>
+</html>
